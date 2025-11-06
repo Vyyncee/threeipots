@@ -7,3 +7,5 @@
 - Supprimer les lignes ou c'est nous qui envoyons la requête ???
 - Utilisation des données de TPOT (Savoir si c'est un brut force par exemple, la labellisation plus complète etc...) ???
 - Ne pas normaliser toutes les colonnes (exemple : IP, etc...)
+
+Test
