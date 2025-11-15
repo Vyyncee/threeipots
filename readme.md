@@ -9,3 +9,11 @@
 - Ne pas normaliser toutes les colonnes (exemple : IP, etc...)
 
 Test
+
+Etapes de suppresion des colonnes inutiles :
+- Supprimer les colonnes avec plus de 85% de valeur null
+- Supprimer les colonnes pour lesquels la valeurs de chaque ligne est la même
+- Supprimer les colonnes doublons
+- Separer les date, les adresse ip pour avoir des valeurs compréensible par nos model
+
+Est ce que si on a plus de genre 80% des valeurs d'une colonne qui sont identique, ont supprime la colonne ???

@@ -1,6 +1,8 @@
 from glob import glob
 from threeipots.convert_split import ConvertSplit
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 class DataManager:
 
@@ -76,6 +78,58 @@ class DataManager:
 
         return self.merged[key]
 
+    def remove_columns_by_null_threshold(self, key, threshold=0.15):
+        df = self.merged[key]
+        initial_columns = df.shape[1]
+
+        non_null_threshold = threshold * len(df)
+        # Supprimer les colonnes avec moins de threshold% de valeurs non nulles
+        df = df.dropna(axis=1, thresh=non_null_threshold)
+
+        final_columns = df.shape[1]
+        print(f"Colonnes supprimées dans {key} en raison du seuil de valeurs non nulles: {initial_columns - final_columns}")
+
+        self.merged[key] = df
+
+    def show_null_values_columns(self):
+        for key, df in self.merged.items():
+            plt.figure(figsize=(12, 6))
+            sns.heatmap(df.isnull(), cbar=False, yticklabels=False, cmap='viridis')
+            plt.title(f"Valeurs manquantes dans le dataset: {key}")
+            plt.show()
     
+    def fill_missing_values(self, key):
+        df = self.merged[key]
+
+        for col in df.select_dtypes(include=['float64', 'int64']).columns:
+            if df[col].isnull().any():
+                # Remplacer les valeurs nulles par la valeur moyenne de la colonne
+                mean = df[col].mean()
+                df[col].fillna(mean, inplace=True)
         
+        # Pour les colonnes catégorielles, remplacer les NaN par la valeur la plus fréquente
+        for col in df.select_dtypes(include=['object']).columns:
+            if df[col].isnull().any():
+                mode = df[col].mode()[0]
+                df[col].fillna(mode, inplace=True)
+
+        self.merged[key] = df
+
+    def remove_columns(self, key, column_names):
+        for column_name in column_names:
+            self.remove_column(key, column_name)
+
+    def remove_column(self, key, column_name):
+        if column_name in self.merged[key].columns:
+            self.merged[key].drop(columns=[column_name], inplace=True)
+
+    def have_unique_value_columns(self, key):
+        unique_columns = []
+        for col in self.merged[key].columns:
+            if self.merged[key][col].nunique() == 1:
+                unique_columns.append(col)
+        return unique_columns
+    
+    def drop_duplicates_columns(self, key):
+        self.merged[key] = self.merged[key].T.drop_duplicates().T
         
