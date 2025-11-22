@@ -17,3 +17,5 @@ Etapes de suppresion des colonnes inutiles :
 - Separer les date, les adresse ip pour avoir des valeurs compréensible par nos model
 
 Est ce que si on a plus de genre 80% des valeurs d'une colonne qui sont identique, ont supprime la colonne ???
+
+- Ajout de GridSearchCV pour l'optimisation des hyperparamètres des modèles pour ensuite faire une comparaison avec les modèles en générale et ensuite les intégrer oui ou non a des modèles d'ensemble (pas besoin de le faire si le modèle est déjà optimisé).

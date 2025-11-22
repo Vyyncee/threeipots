@@ -3,11 +3,16 @@ from threeipots.convert_split import ConvertSplit
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import LabelEncoder
 
 class DataManager:
 
     INFECTED = "Infected"
     CLEAN = "Clean"
+
+    mapping = {CLEAN: 0, INFECTED: 1}
+    inverse_mapping = {0: CLEAN, 1: INFECTED}
 
     def __init__(self):
 
@@ -131,5 +136,39 @@ class DataManager:
         return unique_columns
     
     def drop_duplicates_columns(self, key):
-        self.merged[key] = self.merged[key].T.drop_duplicates().T
+        self.merged[key] = self.merged[key].loc[:, ~self.merged[key].T.duplicated()]
+
+    def standardisation(self, key):
+        numeric_cols = self.merged[key].select_dtypes(include=['number']).columns
+        scaler = StandardScaler()
+        self.merged[key][numeric_cols] = scaler.fit_transform(self.merged[key][numeric_cols])
+    
+    def encode(self, key):
+        categorical_cols = self.merged[key].select_dtypes(exclude=['number']).columns.drop('label')
+
+        for col in categorical_cols:
+            le = LabelEncoder()
+            self.merged[key][col] = le.fit_transform(self.merged[key][col])
+        
+        self.merged[key]['label'] = self.merged[key]['label'].map(self.mapping)
+
+    def decode_label(self, prediction):
+        return [self.inverse_mapping[i] for i in prediction]
+
+    def balance(self, key, random_state=42):
+        # Taille de la classe minoritaire
+        min_count = self.merged[key]['label'] .value_counts().min()
+        
+        # Sous-échantillonnage de chaque classe à la taille de la classe minoritaire
+        balanced_df = pd.concat([
+            self.merged[key][self.merged[key]['label'] == cls].sample(n=min_count, random_state=random_state)
+            for cls in self.merged[key]['label'].unique()
+        ])
+        
+        # Mélanger les lignes
+        return balanced_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
+
+
+        
+
         
