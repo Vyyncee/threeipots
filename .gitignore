@@ -3,3 +3,6 @@
 __pycache__/
 /threeipots/data/
 .DS_Store
+/threeipots/ids/models
+/threeipots/ids/columns
+/threeipots/ids/result.csv

@@ -12,7 +12,6 @@ class ConvertSplit:
     # Paths and ports to retrieve .pcap files and split them
     PATH_ATTACK_PCAP = "/home/debian/tpotce/data/tcpdump/"
     PATH_CLEANED_PCAP = "/home/debian/1-Projet_honeypot_dev_by_us_the_goup/1-Centralisation_data/threeipots/data/splited_normal_pcap/"
-    PORTS_ATTACK = {SSH_TELNET: [56, 57], SMTP: [82, 587], HTTP: [80], IPP_RAW_LPD: [9100]}
     PORTS_CLEANED = {SSH_TELNET: [22, 23], SMTP: [25, 587], HTTP: [80], IPP_RAW_LPD: [9100]}
 
     # Paths for attack data
@@ -43,7 +42,7 @@ class ConvertSplit:
         self.normal_files_path = glob(self.PATH_CLEANED_PCAP + "*.pcap")
 
         # Define ports to split
-        self.ports_to_split = self.PORTS_ATTACK
+        self.ports_to_split = self.PORTS_CLEAND
 
         self.ports_to_split_normal = self.PORTS_CLEANED
 

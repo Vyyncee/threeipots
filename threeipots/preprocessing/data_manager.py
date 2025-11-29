@@ -4,7 +4,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import train_test_split
 
 class DataManager:
 
@@ -138,18 +140,23 @@ class DataManager:
     def drop_duplicates_columns(self, key):
         self.merged[key] = self.merged[key].loc[:, ~self.merged[key].T.duplicated()]
 
-    def standardisation(self, key):
-        numeric_cols = self.merged[key].select_dtypes(include=['number']).columns
-        scaler = StandardScaler()
-        self.merged[key][numeric_cols] = scaler.fit_transform(self.merged[key][numeric_cols])
-    
-    def encode(self, key):
-        categorical_cols = self.merged[key].select_dtypes(exclude=['number']).columns.drop('label')
+    @staticmethod
+    def get_preprocessor(df):
 
-        for col in categorical_cols:
-            le = LabelEncoder()
-            self.merged[key][col] = le.fit_transform(self.merged[key][col])
-        
+        # Colonne numérique pour le Scaling
+        numeric_cols = df.select_dtypes(include=['number']).columns.drop('label')
+
+        # Colonne categorielle pour l'encodage
+        categorical_cols = df.select_dtypes(exclude=['number']).columns
+
+        preprocessor = ColumnTransformer([
+            ("num", StandardScaler(), numeric_cols),
+            ("cat", OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1), categorical_cols)
+        ])
+
+        return preprocessor
+    
+    def encode_label(self, key):
         self.merged[key]['label'] = self.merged[key]['label'].map(self.mapping)
 
     def decode_label(self, prediction):
@@ -157,7 +164,7 @@ class DataManager:
 
     def balance(self, key, random_state=42):
         # Taille de la classe minoritaire
-        min_count = self.merged[key]['label'] .value_counts().min()
+        min_count = self.merged[key]['label'].value_counts().min()
         
         # Sous-échantillonnage de chaque classe à la taille de la classe minoritaire
         balanced_df = pd.concat([
@@ -165,8 +172,32 @@ class DataManager:
             for cls in self.merged[key]['label'].unique()
         ])
         
-        # Mélanger les lignes
-        return balanced_df.sample(frac=1, random_state=random_state).reset_index(drop=True)
+        return balanced_df
+    
+    @staticmethod
+    def mix_split(df, size=1):
+        if size != 1:
+           size = min(size, len(df))
+           df = df.sample(n=size, random_state=42).reset_index(drop=True)
+        else:
+           df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+        
+        # Séparation des features (X) et de la cible (y)
+        X = df.drop(columns=['label'])
+        y = df['label']
+    
+        # Création des ensembles d'entraînement et de test (80% train, 20% test)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, 
+            test_size=0.2, 
+            random_state=42, 
+            stratify=y  # Maintenir la même proportion de classes dans train et test
+        )
+
+        return X_train, X_test, y_train, y_test
+    
+    def drop_leaky_columns(self, key, cols_to_drop):
+        self.merged[key].drop(columns=cols_to_drop, inplace=True, errors="ignore")
 
 
         

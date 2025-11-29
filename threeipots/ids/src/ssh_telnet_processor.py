@@ -8,4 +8,5 @@ class SshTelnetProcessor(AbstractPortProcessor):
         super(self.NAME)
 
     def predict(self, x):
-        return self.pipeline.predict(x)
+        x = self.transformer(x)
+        return self.model.predict(x)
