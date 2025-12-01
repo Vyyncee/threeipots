@@ -5,7 +5,7 @@ import threading
 import pandas as pd
 
 PORT_FILTER = "tcp port 80 or tcp port 22 or tcp port 23 or tcp port 25 or tcp port 587 or tcp port 9100"
-CSV_FILE = "result.csv"
+CSV_FILE = "./threeipots/ids/result.csv"
 
 packet_queue = queue.Queue()
 
@@ -22,7 +22,7 @@ def packet_worker():
         pkt = packet_queue.get()
 
         if pkt is None:
-            break
+            continue
 
         flat = {}
 
@@ -36,20 +36,25 @@ def packet_worker():
         trame = pd.DataFrame([flat])
 
         processor = portFactory.create_processor(trame)
+
+        if processor is None:
+            continue
+
         prediction = processor.predict(trame)
+        trame['label'] = int(prediction[0])
 
-        trame['label'] = prediction
-        
-        if prediction == 0 :
-            green(trame)
+        if int(prediction[0]) == 0 :
+            print(green(trame))
         else:
-            red(trame)
+            print(red(trame))
 
+        # TODO ça marche pas
         # Enregistrement dans un fichier csv
         trame.to_csv(
             CSV_FILE,
             mode='a',
-            index=False
+            index=False,
+            header=False
         )
 
         packet_queue.task_done()

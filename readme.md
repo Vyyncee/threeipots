@@ -19,3 +19,20 @@ Etapes de suppresion des colonnes inutiles :
 Est ce que si on a plus de genre 80% des valeurs d'une colonne qui sont identique, ont supprime la colonne ???
 
 - Ajout de GridSearchCV pour l'optimisation des hyperparamètres des modèles pour ensuite faire une comparaison avec les modèles en générale et ensuite les intégrer oui ou non a des modèles d'ensemble (pas besoin de le faire si le modèle est déjà optimisé).
+
+Etape :
+
+Pour chaque honey pot
+- preprocessor
+
+Pour chaque model
+- Creation de la pipeline
+- Le Grid search
+-> Les meilleurs hyperparam
+- Reéentrainement sur tout le dataset
+- eval
+- stockage
+
+Model de voting
+- reentrainement
+- eval

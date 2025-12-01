@@ -42,7 +42,7 @@ class ConvertSplit:
         self.normal_files_path = glob(self.PATH_CLEANED_PCAP + "*.pcap")
 
         # Define ports to split
-        self.ports_to_split = self.PORTS_CLEAND
+        self.ports_to_split = self.PORTS_CLEANED
 
         self.ports_to_split_normal = self.PORTS_CLEANED
 

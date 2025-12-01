@@ -1,12 +1,12 @@
-from abstract_port_processor import AbstractPortProcessor
+from .abstract_port_processor import AbstractPortProcessor
 
 class HttpProcessor(AbstractPortProcessor):
 
     NAME = "HTTP"
 
     def __init__(self):
-        super(self.NAME)
+        super().__init__(self.NAME)
 
     def predict(self, x):
-        x = self.transformer(x)
+        x = super().transformer(x)
         return self.model.predict(x)
