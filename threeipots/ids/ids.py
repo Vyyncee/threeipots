@@ -48,7 +48,7 @@ def packet_worker():
         else:
             print(red(trame))
 
-        # TODO ça marche pas
+        # TODO
         # Enregistrement dans un fichier csv
         trame.to_csv(
             CSV_FILE,

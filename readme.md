@@ -36,3 +36,8 @@ Pour chaque model
 Model de voting
 - reentrainement
 - eval
+
+
+Split stratifié par bloc ???
+Transformer ?
+Class data manager

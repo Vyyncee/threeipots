@@ -4,6 +4,10 @@ class SshTelnetProcessor(AbstractPortProcessor):
 
     NAME = "SSH_TELNET"
 
+    @property
+    def NAME(self):
+        return self.__class__.NAME
+
     def __init__(self):
         super().__init__(self.NAME)
 

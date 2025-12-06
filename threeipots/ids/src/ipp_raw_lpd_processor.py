@@ -4,6 +4,10 @@ class IppRawLpdProcessor(AbstractPortProcessor):
 
     NAME = "IPP_RAW_LPD"
 
+    @property
+    def NAME(self):
+        return self.__class__.NAME
+
     def __init__(self):
         super().__init__(self.NAME)
 

@@ -1,9 +1,15 @@
 from glob import glob
 import pyshark
 from csv import DictWriter
+import pandas as pd
 
 class ConvertSplit:
 
+    ATTACK_PART_PATH = "attacks_"
+    CSV = ".csv"
+    NORMAL_PART_PATH = "normal_"
+
+    # Protocols name
     HTTP = "HTTP"
     SMTP = "SMTP"
     SSH_TELNET = "SSH_TELNET"
@@ -12,78 +18,60 @@ class ConvertSplit:
     # Paths and ports to retrieve .pcap files and split them
     PATH_ATTACK_PCAP = "/home/debian/tpotce/data/tcpdump/"
     PATH_CLEANED_PCAP = "/home/debian/1-Projet_honeypot_dev_by_us_the_goup/1-Centralisation_data/threeipots/data/splited_normal_pcap/"
-    PORTS_CLEANED = {SSH_TELNET: [22, 23], SMTP: [25, 587], HTTP: [80], IPP_RAW_LPD: [9100]}
+    
+    # Ports by protocol
+    PORTS = {SSH_TELNET: [22, 23], SMTP: [25, 587], HTTP: [80], IPP_RAW_LPD: [9100]}
 
     # Paths for attack data
     PATH_ATTACK_SPLIT = "/home/debian/1-Projet_honeypot_dev_by_us_the_goup/1-Centralisation_data/threeipots/data/attack/"
     
-    PATH_ATTACK_HTTP = PATH_ATTACK_SPLIT + "attacks_" + HTTP + ".csv"
-    PATH_ATTACK_SMTP = PATH_ATTACK_SPLIT + "attacks_" + SMTP + ".csv"
-    PATH_ATTACK_SSH_TELNET = PATH_ATTACK_SPLIT + "attacks_" + SSH_TELNET + ".csv"
-    PATH_ATTACK_IPP_RAW_LPD = PATH_ATTACK_SPLIT + "attacks_" + IPP_RAW_LPD + ".csv"
-
-    PATHS_ATTACK_SPLIT = {SSH_TELNET: PATH_ATTACK_SSH_TELNET, SMTP: PATH_ATTACK_SMTP, HTTP: PATH_ATTACK_HTTP, IPP_RAW_LPD: PATH_ATTACK_IPP_RAW_LPD}
-
     # Paths for normal data
     PATH_NORMAL_SPLIT = "/home/debian/1-Projet_honeypot_dev_by_us_the_goup/1-Centralisation_data/threeipots/data/benin/"
-
-    PATH_NORMAL_HTTP = PATH_NORMAL_SPLIT + "normal_" + HTTP + ".csv"
-    PATH_NORMAL_SMTP = PATH_NORMAL_SPLIT + "normal_" + SMTP + ".csv"
-    PATH_NORMAL_SSH_TELNET = PATH_NORMAL_SPLIT + "normal_" + SSH_TELNET + ".csv"
-    PATH_NORMAL_IPP_RAW_LPD = PATH_NORMAL_SPLIT + "normal_" + IPP_RAW_LPD + ".csv"
-
-    PATHS_NORMAL_SPLIT = {SSH_TELNET: PATH_NORMAL_SSH_TELNET, SMTP: PATH_NORMAL_SMTP, HTTP: PATH_NORMAL_HTTP, IPP_RAW_LPD: PATH_NORMAL_IPP_RAW_LPD}
 
     def __init__(self):
 
         # Define paths for retrieve all attack .pcap files
-        self.attack_files_path = glob(self.PATH_ATTACK_PCAP + "*.pcap")
+        self.attack_files_path = sorted(glob(self.PATH_ATTACK_PCAP + "*.pcap"))
 
+        # Define paths for retrieve all normal .pcap files
         self.normal_files_path = glob(self.PATH_CLEANED_PCAP + "*.pcap")
 
-        # Define ports to split
-        self.ports_to_split = self.PORTS_CLEANED
-
-        self.ports_to_split_normal = self.PORTS_CLEANED
-
-    def split(self):
-        attacks_ssh_telnet = []
-        attacks_smtp = []
-        attacks_http = []
-        attacks_ipp_raw_lpd = []
-
-        # Sets pour collecter les colonnes uniques
-        self.colonnes_ssh_telnet = set()
-        self.colonnes_smtp = set()
-        self.colonnes_http = set()
-        self.colonnes_ipp_raw_lpd = set()
+    def search_attacks_by_port(self, ports):
+        attacks = []
 
         for pcap in self.attack_files_path:
+
+            if len(attacks) > 35000:
+                break
+
             capture = pyshark.FileCapture(pcap)
             try :
                 for paquet in capture:
+                    if len(attacks) > 35000:
+                        break
+
                     try: 
-                        # Extraire les colonnes du paquet
-                        colonnes = set()
+                        # Extraire les données du paquet
+                        row = {}
                         for layer in paquet.layers:
                             for field in layer.field_names:
-                                colonnes.add(layer.layer_name + "." + field)
+                                name = layer.layer_name + "." + field
+
+                                # Récupérer la valeur
+                                if hasattr(paquet, layer.layer_name):
+                                    layer = getattr(paquet, layer.layer_name)
+                                    row[name] = getattr(layer, field, '')
+                                else:
+                                    row[name] = ''
+
                         # Extraire le port du paquet
                         port = paquet.udp.dstport if hasattr(paquet, 'udp') else paquet.tcp.dstport
+
                         if port is None:
                             continue
-                        if int(port) in self.ports_to_split[self.SSH_TELNET]:
-                            attacks_ssh_telnet.append(paquet)
-                            self.colonnes_ssh_telnet.update(colonnes)
-                        elif int(port) in self.ports_to_split[self.SMTP]:
-                            attacks_smtp.append(paquet)
-                            self.colonnes_smtp.update(colonnes)
-                        elif int(port) in self.ports_to_split[self.HTTP]:
-                            attacks_http.append(paquet)
-                            self.colonnes_http.update(colonnes)
-                        elif int(port) in self.ports_to_split[self.IPP_RAW_LPD]:
-                            attacks_ipp_raw_lpd.append(paquet)
-                            self.colonnes_ipp_raw_lpd.update(colonnes)
+                        if int(port) in ports:
+                            attacks.append(row)
+
                     except Exception as e:
                         # Ignorer les paquets corrompues
                         continue
@@ -91,25 +79,37 @@ class ConvertSplit:
                 # Ignorer les fichiers pcap corrompues
                 capture.close()
                 continue
+
             capture.close()
 
-        return (attacks_ssh_telnet, sorted(self.colonnes_ssh_telnet)), (attacks_smtp, sorted(self.colonnes_smtp)), \
-                (attacks_http, sorted(self.colonnes_http)), (attacks_ipp_raw_lpd, sorted(self.colonnes_ipp_raw_lpd))
+        return attacks
+    
+    def write_attacks(self, attacks, protocol):
+        path = self.PATH_ATTACK_SPLIT + self.ATTACK_PART_PATH + protocol + self.CSV
+        df = pd.DataFrame(attacks)
+        df.to_csv(path, index=False)
 
+        return list(df.columns)
 
-    def convert(self, write_paths):
+    def write_normal(self, columns, protocol):
 
-        to_convert = self.split()
+        # Path to write the csv
+        path = self.PATH_NORMAL_SPLIT  + self.NORMAL_PART_PATH + protocol + self.CSV
 
-        for (paquets, colonnes), path in zip(to_convert, write_paths.values()):
-            
-            with open(path, 'w', newline='', encoding='utf-8') as f:
-                writer = DictWriter(f, fieldnames=colonnes)
-                writer.writeheader()
+        # Path to read the pcap
+        right_file = next((f for f in self.normal_files_path if protocol in f), None)
+        if right_file is None :
+            raise Exception("Fichier introuvable")
 
-                for paquet in paquets:
+        capture = pyshark.FileCapture(right_file)
+        with open(path, 'w', newline='', encoding='utf-8') as f:
+            writer = DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+
+            for paquet in capture:
+                try:
                     row = {}
-                    for col in colonnes:
+                    for col in columns:
                         # Séparer layer.field
                         parts = col.split('.', 1)
                         layer_name = parts[0]
@@ -118,53 +118,50 @@ class ConvertSplit:
                         # Récupérer la valeur
                         if hasattr(paquet, layer_name):
                             layer = getattr(paquet, layer_name)
-                            row[col] = getattr(layer, field_name, '')
+                            row[col] = getattr(layer, field_name, None)
                         else:
-                            row[col] = ''
+                            row[col] = None
+
                     writer.writerow(row)
+                except Exception as e:
+                    # Ignorer les paquets corrompues
+                    continue
 
-    def convert_normal(self):
-
-        for path, write_path in zip(sorted(self.normal_files_path), sorted(self.PATHS_NORMAL_SPLIT.values())):
-
-            if self.HTTP in write_path:
-                columns = sorted(self.colonnes_http)
-            elif self.SMTP in write_path:
-                columns = sorted(self.colonnes_smtp)
-            elif self.SSH_TELNET in write_path:
-                columns = sorted(self.colonnes_ssh_telnet)
-            elif self.IPP_RAW_LPD in write_path:
-                columns = sorted(self.colonnes_ipp_raw_lpd)         
-
-            capture = pyshark.FileCapture(path)
-
-            with open(write_path, 'w', newline='', encoding='utf-8') as f:
-                writer = DictWriter(f, fieldnames=columns)
-                writer.writeheader()
-
-                for paquet in capture:
-                    try:
-                        row = {}
-                        for col in columns:
-                            # Séparer layer.field
-                            parts = col.split('.', 1)
-                            layer_name = parts[0]
-                            field_name = parts[1] if len(parts) > 1 else col
-                            
-                            # Récupérer la valeur
-                            if hasattr(paquet, layer_name):
-                                layer = getattr(paquet, layer_name)
-                                row[col] = getattr(layer, field_name, '')
-                            else:
-                                row[col] = ''
-                        writer.writerow(row)
-                    except Exception as e:
-                        # Ignorer les paquets corrompues
-                        continue
-            capture.close()
+        capture.close()
 
 
 if __name__ == "__main__":        
     convertAndSplit = ConvertSplit()
-    convertAndSplit.convert(ConvertSplit.PATHS_ATTACK_SPLIT)
-    convertAndSplit.convert_normal()
+
+    # SSH_TELNET
+    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.SSH_TELNET])
+    print('Attaques ' + ConvertSplit.SSH_TELNET + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.SSH_TELNET)
+    print('Attaques ' + ConvertSplit.SSH_TELNET + ' écrites.')
+    convertAndSplit.write_normal(columns, ConvertSplit.SSH_TELNET)
+    print('Normales ' + ConvertSplit.SSH_TELNET + ' écrites.')
+
+    # HTTP
+    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.HTTP])
+    print('Attaques ' + ConvertSplit.HTTP + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.HTTP)
+    print('Attaques ' + ConvertSplit.HTTP + ' écrites.')
+    convertAndSplit.write_normal(columns, ConvertSplit.HTTP)
+    print('Normales ' + ConvertSplit.HTTP + ' écrites.')
+
+    # SMTP
+    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.SMTP])
+    print('Attaques ' + ConvertSplit.SMTP + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.SMTP)
+    print('Attaques ' + ConvertSplit.SMTP + ' écrites.')
+    convertAndSplit.write_normal(columns, ConvertSplit.SMTP)
+    print('Normales ' + ConvertSplit.SMTP + ' écrites.')
+
+    # IPP_LPD_RAW
+    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.IPP_RAW_LPD])
+    print('Attaques ' + ConvertSplit.IPP_RAW_LPD + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.IPP_RAW_LPD)
+    print('Attaques ' + ConvertSplit.IPP_RAW_LPD + ' écrites.')
+    convertAndSplit.write_normal(columns, ConvertSplit.IPP_RAW_LPD)
+    print('Normales ' + ConvertSplit.IPP_RAW_LPD + ' écrites.')
+

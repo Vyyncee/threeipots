@@ -4,6 +4,10 @@ class HttpProcessor(AbstractPortProcessor):
 
     NAME = "HTTP"
 
+    @property
+    def NAME(self):
+        return self.__class__.NAME
+
     def __init__(self):
         super().__init__(self.NAME)
 
