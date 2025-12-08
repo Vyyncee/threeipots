@@ -7,6 +7,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
+from threeipots.utils.protocol import Protocol
+from threeipots.utils.transformer.transform import transform_row
+from sklearn.model_selection import GroupShuffleSplit
 
 class DataManager:
 
@@ -15,6 +18,10 @@ class DataManager:
 
     mapping = {CLEAN: 0, INFECTED: 1}
     inverse_mapping = {0: CLEAN, 1: INFECTED}
+
+    ##############
+    #### INIT ####
+    ##############
 
     def __init__(self):
 
@@ -30,14 +37,10 @@ class DataManager:
         self.benin = {}
 
         for path in self.paths_benin:
-            if ConvertSplit.HTTP in path:
-                self.benin[ConvertSplit.HTTP] = pd.read_csv(path, low_memory=False)
-            elif ConvertSplit.SSH_TELNET in path:
-                self.benin[ConvertSplit.SSH_TELNET] = pd.read_csv(path, low_memory=False)
-            elif ConvertSplit.SMTP in path:
-                self.benin[ConvertSplit.SMTP] = pd.read_csv(path, low_memory=False)
-            elif ConvertSplit.IPP_RAW_LPD in path:
-                self.benin[ConvertSplit.IPP_RAW_LPD] = pd.read_csv(path, low_memory=False)
+            for proto in Protocol:
+                if proto.name in path:
+                    self.benin[proto] = pd.read_csv(path, low_memory=False)
+                    break
 
         return self.benin
 
@@ -46,16 +49,39 @@ class DataManager:
         self.attacks = {}
 
         for path in self.paths_attack:
-            if ConvertSplit.HTTP in path:
-                self.attacks[ConvertSplit.HTTP] = pd.read_csv(path, low_memory=False)
-            elif ConvertSplit.SSH_TELNET in path:
-                self.attacks[ConvertSplit.SSH_TELNET] = pd.read_csv(path, low_memory=False)
-            elif ConvertSplit.SMTP in path:
-                self.attacks[ConvertSplit.SMTP] = pd.read_csv(path, low_memory=False)
-            elif ConvertSplit.IPP_RAW_LPD in path:
-                self.attacks[ConvertSplit.IPP_RAW_LPD] = pd.read_csv(path, low_memory=False)
+            for proto in Protocol:
+                if proto.name in path:
+                    self.attacks[proto] = pd.read_csv(path, low_memory=False)
+                    break
 
         return self.attacks
+
+    #######################
+    #### PREPROCESSING ####
+    #######################
+
+    @staticmethod
+    def transform_df(df, protocol):
+        return pd.DataFrame(df.apply(lambda row: transform_row(row, protocol), axis=1).tolist())
+
+    def transform(self):
+        for key, df in self.benin.items():
+            self.benin[key] = DataManager.transform_df(df, key)
+        for key, df in self.attacks.items():
+            self.attacks[key] = DataManager.transform_df(df, key)
+
+    #######################
+
+    def impute_median(self):
+        for key, df in self.benin.items():
+            numeric_cols = df.select_dtypes(include='number').columns
+            self.benin[key][numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+
+        for key, df in self.attacks.items():
+            numeric_cols = df.select_dtypes(include='number').columns
+            self.attacks[key][numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+    
+    #######################
 
     def add_label_column(self, key, label):
         if label == self.INFECTED:
@@ -147,7 +173,7 @@ class DataManager:
         numeric_cols = df.select_dtypes(include=['number']).columns.drop('label')
 
         # Colonne categorielle pour l'encodage
-        categorical_cols = df.select_dtypes(exclude=['number']).columns
+        categorical_cols = df.select_dtypes(exclude=['number']).columns.drop('flow_id')
 
         preprocessor = ColumnTransformer([
             ("num", StandardScaler(), numeric_cols),
@@ -159,8 +185,9 @@ class DataManager:
     def encode_label(self, key):
         self.merged[key]['label'] = self.merged[key]['label'].map(self.mapping)
 
-    def decode_label(self, prediction):
-        return [self.inverse_mapping[i] for i in prediction]
+    @staticmethod
+    def decode_label(prediction):
+        return [DataManager.inverse_mapping[i] for i in prediction]
 
     def balance(self, key, random_state=42):
         # Taille de la classe minoritaire
@@ -173,33 +200,34 @@ class DataManager:
         ])
         
         return balanced_df
-    
+
     @staticmethod
-    def mix_split(df, size=1):
-        if size != 1:
-           size = min(size, len(df))
-           df = df.sample(n=size, random_state=42).reset_index(drop=True)
-        else:
-           df = df.sample(frac=1, random_state=42).reset_index(drop=True)
-        
-        # Séparation des features (X) et de la cible (y)
-        X = df.drop(columns=['label'])
-        y = df['label']
+    def get_flow_id(row):
+        pair1 = (row['src_ip'], row['src_port'])
+        pair2 = (row['dst_ip'], row['dst_port'])
+        return tuple(sorted([pair1, pair2]))
     
-        # Création des ensembles d'entraînement et de test (80% train, 20% test)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, 
-            test_size=0.2, 
-            random_state=42, 
-            stratify=y  # Maintenir la même proportion de classes dans train et test
+    def add_flow_id(self, key):
+        self.merged[key]['flow_id'] = self.merged[key].apply(DataManager.get_flow_id, axis=1)
+
+    @staticmethod
+    def mix_split(df):
+        """
+        df : DataFrame avec au moins les colonnes ['flow_id', 'label']
+        """
+
+        # Regrouper par flow_id et prendre y du premier paquet de chaque flux
+        flows_df = df.groupby('flow_id')['label'].first().reset_index()
+
+        # Split train/test stratifié sur y
+        train_flows, test_flows = train_test_split(
+            flows_df, test_size=0.2, stratify=flows_df['label'], random_state=42
         )
 
+        # Récupérer les paquets correspondants
+        X_train = df[df['flow_id'].isin(train_flows['flow_id'])].drop(columns=['label', 'flow_id'])
+        y_train = df[df['flow_id'].isin(train_flows['flow_id'])]['label']
+        X_test = df[df['flow_id'].isin(test_flows['flow_id'])].drop(columns=['label', 'flow_id'])
+        y_test = df[df['flow_id'].isin(test_flows['flow_id'])]['label']
+
         return X_train, X_test, y_train, y_test
-    
-    def drop_leaky_columns(self, key, cols_to_drop):
-        self.merged[key].drop(columns=cols_to_drop, inplace=True, errors="ignore")
-
-
-        
-
-        

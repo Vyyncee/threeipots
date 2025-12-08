@@ -1,7 +1,7 @@
 from .http_processor import HttpProcessor
 from .ssh_telnet_processor import SshTelnetProcessor
 from .smtp_processor import SmtpProcessor
-from .ipp_raw_lpd_processor import IppRawLpdProcessor
+from .raw_processor import RawProcessor
 
 class PortFactory:
 
@@ -9,7 +9,7 @@ class PortFactory:
         httpProcessor = HttpProcessor()
         sshTelnetProcessor = SshTelnetProcessor()
         smtpProcessor = SmtpProcessor()
-        ippRawLpdProcessor = IppRawLpdProcessor()
+        rawProcessor = RawProcessor()
 
         self.port_map = {
             '80': httpProcessor,
@@ -17,7 +17,7 @@ class PortFactory:
             '23': sshTelnetProcessor,
             '25': smtpProcessor, 
             '587': smtpProcessor,
-            '9100': ippRawLpdProcessor
+            '9100': rawProcessor
         }
     
     def create_processor(self, trame):

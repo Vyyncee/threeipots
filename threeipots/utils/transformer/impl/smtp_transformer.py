@@ -1,18 +1,19 @@
 from ..protocol_transformer import ProtocolTransformer
 from .. import register_transformer
+from ...protocol import Protocol
 
 @register_transformer
 class SmtpTransformer(ProtocolTransformer):
 
-    NAME = "SMTP"
+    NAME = Protocol.SMTP
 
-    TRANSFORMATION = {
+    TRANSFORMATIONS = {
         # -----------------------------
         #           TCP / IP
         # -----------------------------
 
-        "src_ip": lambda row: row.get("ip.src"),  # Adresse source du paquet
-        "dst_ip": lambda row: row.get("ip.dst"),  # Adresse destination du paquet
+        "src_ip": lambda row: row.get("ip.src"),  # Adresse IP source
+        "dst_ip": lambda row: row.get("ip.dst"),  # Adresse IP destination
 
         "src_port": lambda row: row.get("tcp.srcport"),  # Port source TCP
         "dst_port": lambda row: row.get("tcp.dstport"),  # Port destination TCP
@@ -106,15 +107,7 @@ class SmtpTransformer(ProtocolTransformer):
         "imf_message_text_len": lambda row: len(row.get("imf.message_text") or ""),  
         # Longueur du corps du message
 
-        "imf_message_text_entropy": lambda row: ProtocolTransformer.entropy(row.get("imf.message_text") or ""),  
+        "imf_message_text_entropy": lambda row: ProtocolTransformer.entropy(row.get("imf.message_text") or "")  
         # Entropie du texte → détecte obfuscation, encodages, scripts
     }
-
-    @property
-    def NAME(self):
-        return self.__class__.NAME
-    
-    @property
-    def TRANSFORMATIONS(self) -> dict :
-        return self.__class__.TRANSFORMATION
 

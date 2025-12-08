@@ -1,8 +1,9 @@
 from .abstract_port_processor import AbstractPortProcessor
+from ...utils.protocol import Protocol
 
 class SmtpProcessor(AbstractPortProcessor):
 
-    NAME = "SMTP"
+    NAME = Protocol.SMTP.name
 
     @property
     def NAME(self):
@@ -10,7 +11,3 @@ class SmtpProcessor(AbstractPortProcessor):
 
     def __init__(self):
         super().__init__(self.NAME)
-
-    def predict(self, trame):
-        x = super().transformer(x)
-        return self.model.predict(x)

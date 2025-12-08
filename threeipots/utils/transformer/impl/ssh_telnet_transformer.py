@@ -1,12 +1,20 @@
 from ..protocol_transformer import ProtocolTransformer
 from .. import register_transformer
+from ...protocol import Protocol
 
 @register_transformer
 class SshTelnetTransformer(ProtocolTransformer):
 
-    NAME = "SSH_TELNET"
+    NAME = Protocol.SSH_TELNET
 
-    TRANSFORMATION = {
+    TRANSFORMATIONS = {
+        
+        "src_ip": lambda row: row.get("ip.src"),  # Adresse IP source
+        "dst_ip": lambda row: row.get("ip.dst"),  # Adresse IP destination
+
+        "src_port": lambda row: row.get("tcp.srcport"),  # Port source TCP
+        "dst_port": lambda row: row.get("tcp.dstport"),  # Port destination TCP
+
         # ===================== TEMPS ===================== #
 
         # Temps écoulé depuis le paquet précédent dans le même flux
@@ -139,14 +147,6 @@ class SshTelnetTransformer(ProtocolTransformer):
         # ===================== FLUX ===================== #
 
         # Identifiant de flux TCP (permet regroupement)
-        "stream_id": lambda row: int(row.get("tcp.stream", -1)),
+        "stream_id": lambda row: int(row.get("tcp.stream", -1))
     }
-
-    @property
-    def NAME(self):
-        return self.__class__.NAME
-    
-    @property
-    def TRANSFORMATIONS(self) -> dict :
-        return self.__class__.TRANSFORMATION
 

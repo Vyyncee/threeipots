@@ -1,8 +1,9 @@
 from .abstract_port_processor import AbstractPortProcessor
+from ...utils.protocol import Protocol
 
 class HttpProcessor(AbstractPortProcessor):
 
-    NAME = "HTTP"
+    NAME = Protocol.HTTP.name
 
     @property
     def NAME(self):
@@ -10,7 +11,3 @@ class HttpProcessor(AbstractPortProcessor):
 
     def __init__(self):
         super().__init__(self.NAME)
-
-    def predict(self, x):
-        x = super().transformer(x)
-        return self.model.predict(x)

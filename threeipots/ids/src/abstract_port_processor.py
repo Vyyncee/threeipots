@@ -14,6 +14,7 @@ class AbstractPortProcessor(ABC):
         pass
 
     def __init__(self):
+        # Retrieve model
         model_path = os.path.join(
             os.path.dirname(__file__),
             '..', 'models', f'{self.NAME}.joblib'
@@ -29,17 +30,9 @@ class AbstractPortProcessor(ABC):
         self.columns = load(columns_path)
 
     def transformer(self, trame):
+        trame = pd.DataFrame(trame.apply(lambda row: transform_row(row, self.NAME), axis=1).tolist())
+        return trame[self.columns.keys()]
 
-        # Gestion des colonnes manquantes
-        for key, value in self.columns.items():
-            if key not in trame.columns:
-                if value:
-                    trame[key] = ''
-                else:
-                    trame[key] = 0
-
-        return trame.apply(lambda row: transform_row(row, self.NAME), axis=1)
-
-    @abstractmethod
-    def predict(self):
-        pass
+    def predict(self, x):
+        x = self.transformer(x)
+        return self.model.predict(x)

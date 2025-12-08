@@ -2,6 +2,10 @@ from glob import glob
 import pyshark
 from csv import DictWriter
 import pandas as pd
+from threeipots.utils.protocol import Protocol
+from threeipots.utils.packet_utils import PacketUtils
+from multiprocessing import Process, Manager
+import time
 
 class ConvertSplit:
 
@@ -9,18 +13,9 @@ class ConvertSplit:
     CSV = ".csv"
     NORMAL_PART_PATH = "normal_"
 
-    # Protocols name
-    HTTP = "HTTP"
-    SMTP = "SMTP"
-    SSH_TELNET = "SSH_TELNET"
-    IPP_RAW_LPD = "IPP_RAW_LPD"
-
     # Paths and ports to retrieve .pcap files and split them
     PATH_ATTACK_PCAP = "/home/debian/tpotce/data/tcpdump/"
     PATH_CLEANED_PCAP = "/home/debian/1-Projet_honeypot_dev_by_us_the_goup/1-Centralisation_data/threeipots/data/splited_normal_pcap/"
-    
-    # Ports by protocol
-    PORTS = {SSH_TELNET: [22, 23], SMTP: [25, 587], HTTP: [80], IPP_RAW_LPD: [9100]}
 
     # Paths for attack data
     PATH_ATTACK_SPLIT = "/home/debian/1-Projet_honeypot_dev_by_us_the_goup/1-Centralisation_data/threeipots/data/attack/"
@@ -36,40 +31,24 @@ class ConvertSplit:
         # Define paths for retrieve all normal .pcap files
         self.normal_files_path = glob(self.PATH_CLEANED_PCAP + "*.pcap")
 
-    def search_attacks_by_port(self, ports):
+    @staticmethod
+    def pcap_worker(pcaps, ports, attacks_split, i):
         attacks = []
-
-        for pcap in self.attack_files_path:
-
-            if len(attacks) > 35000:
-                break
-
+        for pcap in pcaps:
             capture = pyshark.FileCapture(pcap)
             try :
                 for paquet in capture:
-                    if len(attacks) > 35000:
-                        break
-
                     try: 
                         # Extraire les données du paquet
-                        row = {}
-                        for layer in paquet.layers:
-                            for field in layer.field_names:
-                                name = layer.layer_name + "." + field
-
-                                # Récupérer la valeur
-                                if hasattr(paquet, layer.layer_name):
-                                    layer = getattr(paquet, layer.layer_name)
-                                    row[name] = getattr(layer, field, '')
-                                else:
-                                    row[name] = ''
+                        row = PacketUtils.toDict(paquet)
 
                         # Extraire le port du paquet
-                        port = paquet.udp.dstport if hasattr(paquet, 'udp') else paquet.tcp.dstport
+                        dst_port = paquet.udp.dstport if hasattr(paquet, 'udp') else paquet.tcp.dstport
+                        src_port = paquet.udp.srcport if hasattr(paquet, 'udp') else paquet.tcp.srcport
 
-                        if port is None:
+                        if dst_port is None and src_port is None:
                             continue
-                        if int(port) in ports:
+                        if int(dst_port) in ports or int(src_port) in ports:
                             attacks.append(row)
 
                     except Exception as e:
@@ -78,9 +57,32 @@ class ConvertSplit:
             except Exception as e:
                 # Ignorer les fichiers pcap corrompues
                 capture.close()
-                continue
-
             capture.close()
+        
+        attacks_split[i] = attacks
+
+    def retrieve_attacks_by_port(self, ports, num_processes=8):
+        attacks = []
+
+        # Diviser la liste en sous-listes selon le nombre de processus
+        taille = len(self.attack_files_path) // num_processes
+        sous_listes = [self.attack_files_path[i*taille : (i+1)*taille] for i in range(num_processes-1)]
+        sous_listes.append(self.attack_files_path[(num_processes-1)*taille:])
+
+        with Manager() as manager:
+            attacks_split = manager.list([None]*num_processes)
+
+            processes = []
+            for i, sublist in enumerate(sous_listes):
+                p = Process(target=ConvertSplit.pcap_worker, args=(sublist, ports, attacks_split, i))
+                processes.append(p)
+                p.start()
+
+            for p in processes:
+                p.join()
+
+            # Combiner tous les résultats
+            attacks = [elem for attack in attacks_split if attack for elem in attack]
 
         return attacks
     
@@ -134,34 +136,50 @@ if __name__ == "__main__":
     convertAndSplit = ConvertSplit()
 
     # SSH_TELNET
-    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.SSH_TELNET])
-    print('Attaques ' + ConvertSplit.SSH_TELNET + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.SSH_TELNET)
-    print('Attaques ' + ConvertSplit.SSH_TELNET + ' écrites.')
-    convertAndSplit.write_normal(columns, ConvertSplit.SSH_TELNET)
-    print('Normales ' + ConvertSplit.SSH_TELNET + ' écrites.')
+    # start_time = time.time()  # démarre le chronomètre
+    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SSH_TELNET.value)
+
+    # end_time = time.time()    # arrête le chronomètre
+    # elapsed_time = end_time - start_time
+
+    # print(f"La fonction a mis {elapsed_time:.3f} secondes.")
+    
+    # print('Attaques ' + Protocol.SSH_TELNET.name + ' trouvées.')
+    # columns = convertAndSplit.write_attacks(attacks, Protocol.SSH_TELNET.name)
+    # print('Attaques ' + Protocol.SSH_TELNET.name + ' écrites.')
+    # convertAndSplit.write_normal(columns, Protocol.SSH_TELNET.name)
+    # print('Normales ' + Protocol.SSH_TELNET.name + ' écrites.')
 
     # HTTP
-    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.HTTP])
-    print('Attaques ' + ConvertSplit.HTTP + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.HTTP)
-    print('Attaques ' + ConvertSplit.HTTP + ' écrites.')
-    convertAndSplit.write_normal(columns, ConvertSplit.HTTP)
-    print('Normales ' + ConvertSplit.HTTP + ' écrites.')
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.HTTP.value)
+    print('Attaques ' + Protocol.HTTP.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.HTTP.name)
+    print('Attaques ' + Protocol.HTTP.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.HTTP.name)
+    print('Normales ' + Protocol.HTTP.name + ' écrites.')
 
     # SMTP
-    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.SMTP])
-    print('Attaques ' + ConvertSplit.SMTP + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.SMTP)
-    print('Attaques ' + ConvertSplit.SMTP + ' écrites.')
-    convertAndSplit.write_normal(columns, ConvertSplit.SMTP)
-    print('Normales ' + ConvertSplit.SMTP + ' écrites.')
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SMTP.value)
+    print('Attaques ' + Protocol.SMTP.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.SMTP.name)
+    print('Attaques ' + Protocol.SMTP.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.SMTP.name)
+    print('Normales ' + Protocol.SMTP.name + ' écrites.')
 
-    # IPP_LPD_RAW
-    attacks = convertAndSplit.search_attacks_by_port(ConvertSplit.PORTS[ConvertSplit.IPP_RAW_LPD])
-    print('Attaques ' + ConvertSplit.IPP_RAW_LPD + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, ConvertSplit.IPP_RAW_LPD)
-    print('Attaques ' + ConvertSplit.IPP_RAW_LPD + ' écrites.')
-    convertAndSplit.write_normal(columns, ConvertSplit.IPP_RAW_LPD)
-    print('Normales ' + ConvertSplit.IPP_RAW_LPD + ' écrites.')
+    # RAW
+
+    start_time = time.time()  # démarre le chronomètre
+
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.RAW.value)
+
+    end_time = time.time()    # arrête le chronomètre
+    elapsed_time = end_time - start_time
+
+    print(f"La fonction a mis {elapsed_time:.3f} secondes.")
+
+    print('Attaques ' + Protocol.RAW.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.RAW.name)
+    print('Attaques ' + Protocol.RAW.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.RAW.name)
+    print('Normales ' + Protocol.RAW.name + ' écrites.')
 

@@ -3,8 +3,15 @@ import pyshark
 import queue
 import threading
 import pandas as pd
+from utils.protocol import Protocol
+from utils.packet_utils import PacketUtils
 
-PORT_FILTER = "tcp port 80 or tcp port 22 or tcp port 23 or tcp port 25 or tcp port 587 or tcp port 9100"
+
+# Construire le filtre
+# Récupérer tous les ports
+all_ports = [str(port) for proto in Protocol for port in proto.value]
+PORT_FILTER = " or ".join(f"tcp port {port}" for port in all_ports)
+
 CSV_FILE = "./threeipots/ids/result.csv"
 
 packet_queue = queue.Queue()
@@ -24,16 +31,9 @@ def packet_worker():
         if pkt is None:
             continue
 
-        flat = {}
+        dict = PacketUtils.toDict(pkt)
 
-        # key: Nom de la colonne, valeur: Valeur de la trame
-        for layer in pkt.layers:
-            for field in layer.field_names:
-                key = f"{layer.layer_name}.{field}"
-                value = getattr(layer, field, None)
-                flat[key] = str(value)
-
-        trame = pd.DataFrame([flat])
+        trame = pd.DataFrame([dict])
 
         processor = portFactory.create_processor(trame)
 
