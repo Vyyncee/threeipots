@@ -21,18 +21,28 @@ class PortFactory:
         }
     
     def create_processor(self, trame):
-        try:
-            port = trame['tcp.port'].iloc[0]
-        except Exception as e:
-            port = trame['udp.port'].iloc[0]
-        
-        # TODO port
+        ports = []
 
-        processor = self.port_map.get(port)
+        if 'tcp.srcport' in trame.columns:
+            ports.append(trame['tcp.srcport'].iloc[0])
+        if 'tcp.dstport' in trame.columns:
+            ports.append(trame['tcp.dstport'].iloc[0])
+
+        if 'udp.srcport' in trame.columns:
+            ports.append(trame['udp.srcport'].iloc[0])
+        if 'udp.dstport' in trame.columns:
+            ports.append(trame['udp.dstport'].iloc[0])
+
+        processor = None
+        for p in ports:
+            if p in self.port_map:
+                processor = self.port_map[p]
+                break
+
         if processor:
             return processor
         else:
             try:
-                raise ValueError(f"Unknown port {port}")
+                raise ValueError(f"Unknown port {ports}")
             except ValueError as e:
                 pass
