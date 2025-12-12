@@ -12,15 +12,7 @@ from utils.packet_utils import PacketUtils
 all_ports = [str(port) for proto in Protocol for port in proto.value]
 PORT_FILTER = " or ".join(f"tcp port {port}" for port in all_ports)
 
-CSV_FILE = "./threeipots/ids/result.csv"
-
 packet_queue = queue.Queue()
-
-def green(text):
-    return f"\033[92m{text}\033[0m"
-
-def red(text):
-    return f"\033[91m{text}\033[0m"
 
 def packet_worker():
     portFactory = PortFactory()
@@ -40,22 +32,8 @@ def packet_worker():
         if processor is None:
             continue
 
-        prediction = processor.predict(trame)
-        trame['label'] = int(prediction[0])
-
-        if int(prediction[0]) == 0 :
-            print(green(trame))
-        else:
-            print(red(trame))
-
-        # TODO
-        # Enregistrement dans un fichier csv
-        trame.to_csv(
-            CSV_FILE,
-            mode='a',
-            index=False,
-            header=False
-        )
+        # Prédit et Sauvegarde
+        processor.predict(trame)
 
         packet_queue.task_done()
 

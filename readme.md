@@ -41,3 +41,33 @@ Model de voting
 Split stratifié par bloc ???
 Transformer ?
 Class data manager
+
+15 minutes
+Présentation :
+- Archi réseaux
+    - TPOT (Pourquoi avoir choisie TPOT ?)
+        - Les honey pots(Pourquoi avoir choisie ces honeypots ?)
+        - 'tcpdump' integrer a TPOT
+- Extraction et converstion des données
+    - PCAP to CSV
+    - Les données bénins
+- Pretraitement
+    - Les étapes
+- Les modèles
+    - Recherche des hyperparams
+    - Entrainement
+        - Passer chaque model (Peut etre un 1 pour chaque Protocole sinon trop long)
+    - Voting
+    - Sauvegarde
+- L'ids
+    - Explication
+    - Démonstration
+
+Rapport :
+- Architecture
+- Matrice de confusion et résultat des métrique
+- Matrice de Corrélation
+
+
+Presentation sur moodle le 15
+Rapport le 19

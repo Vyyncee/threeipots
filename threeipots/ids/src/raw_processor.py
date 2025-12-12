@@ -3,11 +3,7 @@ from ...utils.protocol import Protocol
 
 class RawProcessor(AbstractPortProcessor):
 
-    NAME = Protocol.RAW.name
-
-    @property
-    def NAME(self):
-        return self.__class__.NAME
+    NAME = Protocol.RAW
 
     def __init__(self):
         super().__init__(self.NAME)

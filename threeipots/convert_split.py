@@ -136,50 +136,50 @@ if __name__ == "__main__":
     convertAndSplit = ConvertSplit()
 
     # SSH_TELNET
-    # start_time = time.time()  # démarre le chronomètre
-    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SSH_TELNET.value)
-
-    # end_time = time.time()    # arrête le chronomètre
-    # elapsed_time = end_time - start_time
-
-    # print(f"La fonction a mis {elapsed_time:.3f} secondes.")
-    
-    # print('Attaques ' + Protocol.SSH_TELNET.name + ' trouvées.')
-    # columns = convertAndSplit.write_attacks(attacks, Protocol.SSH_TELNET.name)
-    # print('Attaques ' + Protocol.SSH_TELNET.name + ' écrites.')
-    # convertAndSplit.write_normal(columns, Protocol.SSH_TELNET.name)
-    # print('Normales ' + Protocol.SSH_TELNET.name + ' écrites.')
-
-    # HTTP
-    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.HTTP.value)
-    print('Attaques ' + Protocol.HTTP.name + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, Protocol.HTTP.name)
-    print('Attaques ' + Protocol.HTTP.name + ' écrites.')
-    convertAndSplit.write_normal(columns, Protocol.HTTP.name)
-    print('Normales ' + Protocol.HTTP.name + ' écrites.')
-
-    # SMTP
-    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SMTP.value)
-    print('Attaques ' + Protocol.SMTP.name + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, Protocol.SMTP.name)
-    print('Attaques ' + Protocol.SMTP.name + ' écrites.')
-    convertAndSplit.write_normal(columns, Protocol.SMTP.name)
-    print('Normales ' + Protocol.SMTP.name + ' écrites.')
-
-    # RAW
-
     start_time = time.time()  # démarre le chronomètre
-
-    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.RAW.value)
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SSH_TELNET.value)
 
     end_time = time.time()    # arrête le chronomètre
     elapsed_time = end_time - start_time
 
     print(f"La fonction a mis {elapsed_time:.3f} secondes.")
+    
+    print('Attaques ' + Protocol.SSH_TELNET.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.SSH_TELNET.name)
+    print('Attaques ' + Protocol.SSH_TELNET.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.SSH_TELNET.name)
+    print('Normales ' + Protocol.SSH_TELNET.name + ' écrites.')
 
-    print('Attaques ' + Protocol.RAW.name + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, Protocol.RAW.name)
-    print('Attaques ' + Protocol.RAW.name + ' écrites.')
-    convertAndSplit.write_normal(columns, Protocol.RAW.name)
-    print('Normales ' + Protocol.RAW.name + ' écrites.')
+    # HTTP
+    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.HTTP.value)
+    # print('Attaques ' + Protocol.HTTP.name + ' trouvées.')
+    # columns = convertAndSplit.write_attacks(attacks, Protocol.HTTP.name)
+    # print('Attaques ' + Protocol.HTTP.name + ' écrites.')
+    # convertAndSplit.write_normal(columns, Protocol.HTTP.name)
+    # print('Normales ' + Protocol.HTTP.name + ' écrites.')
+
+    # # SMTP
+    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SMTP.value)
+    # print('Attaques ' + Protocol.SMTP.name + ' trouvées.')
+    # columns = convertAndSplit.write_attacks(attacks, Protocol.SMTP.name)
+    # print('Attaques ' + Protocol.SMTP.name + ' écrites.')
+    # convertAndSplit.write_normal(columns, Protocol.SMTP.name)
+    # print('Normales ' + Protocol.SMTP.name + ' écrites.')
+
+    # RAW
+
+    # start_time = time.time()  # démarre le chronomètre
+
+    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.RAW.value)
+
+    # end_time = time.time()    # arrête le chronomètre
+    # elapsed_time = end_time - start_time
+
+    # print(f"La fonction a mis {elapsed_time:.3f} secondes.")
+
+    # print('Attaques ' + Protocol.RAW.name + ' trouvées.')
+    # columns = convertAndSplit.write_attacks(attacks, Protocol.RAW.name)
+    # print('Attaques ' + Protocol.RAW.name + ' écrites.')
+    # convertAndSplit.write_normal(columns, Protocol.RAW.name)
+    # print('Normales ' + Protocol.RAW.name + ' écrites.')
 

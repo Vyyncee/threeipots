@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 import math
 from collections import Counter
 import re
+from ..protocol import Protocol
 
 class ProtocolTransformer(ABC):
 
-    NAME: str
+    NAME: Protocol
     TRANSFORMATIONS: dict
 
     @staticmethod

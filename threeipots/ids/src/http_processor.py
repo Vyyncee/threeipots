@@ -3,11 +3,7 @@ from ...utils.protocol import Protocol
 
 class HttpProcessor(AbstractPortProcessor):
 
-    NAME = Protocol.HTTP.name
-
-    @property
-    def NAME(self):
-        return self.__class__.NAME
+    NAME = Protocol.HTTP
 
     def __init__(self):
         super().__init__(self.NAME)

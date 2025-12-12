@@ -3,11 +3,7 @@ from ...utils.protocol import Protocol
 
 class SmtpProcessor(AbstractPortProcessor):
 
-    NAME = Protocol.SMTP.name
-
-    @property
-    def NAME(self):
-        return self.__class__.NAME
+    NAME = Protocol.SMTP
 
     def __init__(self):
         super().__init__(self.NAME)

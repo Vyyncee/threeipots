@@ -3,11 +3,7 @@ from ...utils.protocol import Protocol
 
 class SshTelnetProcessor(AbstractPortProcessor):
 
-    NAME = Protocol.SSH_TELNET.name
-
-    @property
-    def NAME(self):
-        return self.__class__.NAME
+    NAME = Protocol.SSH_TELNET
 
     def __init__(self):
         super().__init__(self.NAME)
