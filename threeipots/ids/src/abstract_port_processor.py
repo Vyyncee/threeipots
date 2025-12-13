@@ -3,8 +3,8 @@ from joblib import load
 import pandas as pd
 import os
 
-from ...utils.transformer.transform import transform_row
-from ...utils.protocol import Protocol
+from threeipots.utils.transformer.transform import transform_row
+from threeipots.utils.protocol import Protocol
 
 
 class AbstractPortProcessor(ABC):
@@ -41,11 +41,15 @@ class AbstractPortProcessor(ABC):
         # Enregistrement
         path = os.path.join(
             os.path.dirname(__file__),
-            '..', 'front/public/result', f'{self.NAME.name}.joblib'
+            '..', 'front/public/result', f'{self.NAME.name}.csv'
         )
+
+        # Pour savoir si on doit ecrire le nom des colonnes dans le csv
+        write_header = not os.path.exists(path) or os.path.getsize(path) == 0
+
         x.to_csv(
             path,
             mode='a',
             index=False,
-            header=False
+            header=write_header
         )

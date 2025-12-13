@@ -2,10 +2,11 @@ from glob import glob
 import pyshark
 from csv import DictWriter
 import pandas as pd
-from threeipots.utils.protocol import Protocol
-from threeipots.utils.packet_utils import PacketUtils
+from utils.protocol import Protocol
+from utils.packet_utils import PacketUtils
 from multiprocessing import Process, Manager
 import time
+import random
 
 class ConvertSplit:
 
@@ -26,7 +27,8 @@ class ConvertSplit:
     def __init__(self):
 
         # Define paths for retrieve all attack .pcap files
-        self.attack_files_path = sorted(glob(self.PATH_ATTACK_PCAP + "*.pcap"))
+        self.attack_files_path = glob(self.PATH_ATTACK_PCAP + "*.pcap")
+        random.shuffle(self.attack_files_path)
 
         # Define paths for retrieve all normal .pcap files
         self.normal_files_path = glob(self.PATH_CLEANED_PCAP + "*.pcap")
@@ -34,23 +36,16 @@ class ConvertSplit:
     @staticmethod
     def pcap_worker(pcaps, ports, attacks_split, i):
         attacks = []
+        compteur = 0
+        port_filter = ' or '.join([f'tcp.srcport == {p} or tcp.dstport == {p} or udp.srcport == {p} or udp.dstport == {p}' for p in ports])
         for pcap in pcaps:
-            capture = pyshark.FileCapture(pcap)
+            capture = pyshark.FileCapture(pcap, display_filter=port_filter, keep_packets=False)
             try :
                 for paquet in capture:
                     try: 
                         # Extraire les données du paquet
                         row = PacketUtils.toDict(paquet)
-
-                        # Extraire le port du paquet
-                        dst_port = paquet.udp.dstport if hasattr(paquet, 'udp') else paquet.tcp.dstport
-                        src_port = paquet.udp.srcport if hasattr(paquet, 'udp') else paquet.tcp.srcport
-
-                        if dst_port is None and src_port is None:
-                            continue
-                        if int(dst_port) in ports or int(src_port) in ports:
-                            attacks.append(row)
-
+                        attacks.append(row)
                     except Exception as e:
                         # Ignorer les paquets corrompues
                         continue
@@ -58,6 +53,8 @@ class ConvertSplit:
                 # Ignorer les fichiers pcap corrompues
                 capture.close()
             capture.close()
+            compteur += 1
+            print('Process ' + str(i) + ': ' + str(compteur) + ' / ' + str(len(pcaps)))
         
         attacks_split[i] = attacks
 
@@ -136,50 +133,51 @@ if __name__ == "__main__":
     convertAndSplit = ConvertSplit()
 
     # SSH_TELNET
-    start_time = time.time()  # démarre le chronomètre
-    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SSH_TELNET.value)
-
-    end_time = time.time()    # arrête le chronomètre
-    elapsed_time = end_time - start_time
-
-    print(f"La fonction a mis {elapsed_time:.3f} secondes.")
-    
-    print('Attaques ' + Protocol.SSH_TELNET.name + ' trouvées.')
-    columns = convertAndSplit.write_attacks(attacks, Protocol.SSH_TELNET.name)
-    print('Attaques ' + Protocol.SSH_TELNET.name + ' écrites.')
-    convertAndSplit.write_normal(columns, Protocol.SSH_TELNET.name)
-    print('Normales ' + Protocol.SSH_TELNET.name + ' écrites.')
-
-    # HTTP
-    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.HTTP.value)
-    # print('Attaques ' + Protocol.HTTP.name + ' trouvées.')
-    # columns = convertAndSplit.write_attacks(attacks, Protocol.HTTP.name)
-    # print('Attaques ' + Protocol.HTTP.name + ' écrites.')
-    # convertAndSplit.write_normal(columns, Protocol.HTTP.name)
-    # print('Normales ' + Protocol.HTTP.name + ' écrites.')
-
-    # # SMTP
-    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SMTP.value)
-    # print('Attaques ' + Protocol.SMTP.name + ' trouvées.')
-    # columns = convertAndSplit.write_attacks(attacks, Protocol.SMTP.name)
-    # print('Attaques ' + Protocol.SMTP.name + ' écrites.')
-    # convertAndSplit.write_normal(columns, Protocol.SMTP.name)
-    # print('Normales ' + Protocol.SMTP.name + ' écrites.')
-
-    # RAW
-
     # start_time = time.time()  # démarre le chronomètre
-
-    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.RAW.value)
+    # attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SSH_TELNET.value)
 
     # end_time = time.time()    # arrête le chronomètre
     # elapsed_time = end_time - start_time
 
     # print(f"La fonction a mis {elapsed_time:.3f} secondes.")
+    
+    # print('Attaques ' + Protocol.SSH_TELNET.name + ' trouvées.')
+    # columns = convertAndSplit.write_attacks(attacks, Protocol.SSH_TELNET.name)
+    # print('Attaques ' + Protocol.SSH_TELNET.name + ' écrites.')
+    # convertAndSplit.write_normal(columns, Protocol.SSH_TELNET.name)
+    # print('Normales ' + Protocol.SSH_TELNET.name + ' écrites.')
 
-    # print('Attaques ' + Protocol.RAW.name + ' trouvées.')
-    # columns = convertAndSplit.write_attacks(attacks, Protocol.RAW.name)
-    # print('Attaques ' + Protocol.RAW.name + ' écrites.')
-    # convertAndSplit.write_normal(columns, Protocol.RAW.name)
-    # print('Normales ' + Protocol.RAW.name + ' écrites.')
+    # HTTP
+    print('GO')
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.HTTP.value)
+    print('Attaques ' + Protocol.HTTP.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.HTTP.name)
+    print('Attaques ' + Protocol.HTTP.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.HTTP.name)
+    print('Normales ' + Protocol.HTTP.name + ' écrites.')
+
+    # # SMTP
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.SMTP.value)
+    print('Attaques ' + Protocol.SMTP.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.SMTP.name)
+    print('Attaques ' + Protocol.SMTP.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.SMTP.name)
+    print('Normales ' + Protocol.SMTP.name + ' écrites.')
+
+    # RAW
+
+    start_time = time.time()  # démarre le chronomètre
+
+    attacks = convertAndSplit.retrieve_attacks_by_port(Protocol.RAW.value)
+
+    end_time = time.time()    # arrête le chronomètre
+    elapsed_time = end_time - start_time
+
+    print(f"La fonction a mis {elapsed_time:.3f} secondes.")
+
+    print('Attaques ' + Protocol.RAW.name + ' trouvées.')
+    columns = convertAndSplit.write_attacks(attacks, Protocol.RAW.name)
+    print('Attaques ' + Protocol.RAW.name + ' écrites.')
+    convertAndSplit.write_normal(columns, Protocol.RAW.name)
+    print('Normales ' + Protocol.RAW.name + ' écrites.')
 

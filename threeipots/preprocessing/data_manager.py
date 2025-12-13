@@ -225,7 +225,7 @@ class DataManager:
         )
 
         # Récupérer les paquets correspondants
-        X_train = df[df['flow_id'].isin(train_flows['flow_id'])].drop(columns=['label', 'flow_id'])
+        X_train = df[df['flow_id'].isin(train_flows['flow_id'])].drop(columns=['label'])
         y_train = df[df['flow_id'].isin(train_flows['flow_id'])]['label']
         X_test = df[df['flow_id'].isin(test_flows['flow_id'])].drop(columns=['label', 'flow_id'])
         y_test = df[df['flow_id'].isin(test_flows['flow_id'])]['label']

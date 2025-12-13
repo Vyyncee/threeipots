@@ -50,15 +50,18 @@ Présentation :
         - 'tcpdump' integrer a TPOT
 - Extraction et converstion des données
     - PCAP to CSV
-    - Les données bénins
+    - Les données bénines
+POINT Données
 - Pretraitement
     - Les étapes
+POINT Données
 - Les modèles
     - Recherche des hyperparams
     - Entrainement
         - Passer chaque model (Peut etre un 1 pour chaque Protocole sinon trop long)
     - Voting
     - Sauvegarde
+POINT Résultat
 - L'ids
     - Explication
     - Démonstration

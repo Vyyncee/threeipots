@@ -3,8 +3,8 @@ import pyshark
 import queue
 import threading
 import pandas as pd
-from utils.protocol import Protocol
-from utils.packet_utils import PacketUtils
+from threeipots.utils.protocol import Protocol
+from threeipots.utils.packet_utils import PacketUtils
 
 
 # Construire le filtre

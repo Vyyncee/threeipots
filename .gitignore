@@ -6,3 +6,4 @@ __pycache__/
 /threeipots/ids/models
 /threeipots/ids/columns
 /threeipots/ids/result.csv
+/threeipots/ids/front/public/result

@@ -41,8 +41,8 @@ const MAX_ROWS_DISPLAYED = 50;
 // CONSTANTES
 // ============================================================================
 
-const LABEL_ATTACK = 'attack';
-const LABEL_NORMAL = 'normal';
+const LABEL_ATTACK = '1';
+const LABEL_NORMAL = '0';
 
 const FILTER_OPTIONS = {
   ALL: 'all',
@@ -467,7 +467,7 @@ const App = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setDetectionRunning(data.status === 'running');
+        setDetectionRunning(data.running);
       } else {
         console.error('Erreur lors du basculement de la détection');
         setDetectionRunning(prev => !prev);
@@ -487,7 +487,7 @@ const App = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setDetectionRunning(data.running === true);
+        setDetectionRunning(data.running);
       }
     } catch (error) {
       console.error('Erreur lors de la vérification du statut:', error);
