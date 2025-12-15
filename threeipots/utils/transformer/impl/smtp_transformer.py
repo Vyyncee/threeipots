@@ -8,106 +8,80 @@ class SmtpTransformer(ProtocolTransformer):
     NAME = Protocol.SMTP
 
     TRANSFORMATIONS = {
-        # -----------------------------
-        #           TCP / IP
-        # -----------------------------
+        # Identifiant de flux bidirectionnel (même connexion vue dans les deux sens)
+        # Sert de clé stable pour l’agrégation et l’analyse comportementale
+        "flow_id": lambda row: tuple(sorted([
+            (row["ip.src"], row["tcp.srcport"]),
+            (row["ip.dst"], row["tcp.dstport"])
+        ])),
 
-        "src_ip": lambda row: row.get("ip.src"),  # Adresse IP source
-        "dst_ip": lambda row: row.get("ip.dst"),  # Adresse IP destination
+        # TTL anormalement bas ou élevé
+        # Peut indiquer un bot, un scan ou une pile réseau atypique
+        "ttl_suspect": lambda r: int(r["ip.ttl"] < 32 or r["ip.ttl"] > 128),
 
-        "src_port": lambda row: row.get("tcp.srcport"),  # Port source TCP
-        "dst_port": lambda row: row.get("tcp.dstport"),  # Port destination TCP
+        # Taille de paquet IP anormalement petite ou grande
+        # Petit : probe / scan – Grand : flood ou tentative de saturation
+        "ip_len_anormal": lambda r: int(r["ip.len"] < 60 or r["ip.len"] > 1500),
 
-        "is_smtp_port": lambda row: 1 if str(row.get("tcp.dstport")) in ["25","465","587"] else 0,  
-        # Indique si le trafic vise un port SMTP légitime
+        # Connexion interrompue par un reset TCP
+        # Fréquent dans les scans, brute-force ou implémentations SMTP instables
+        "tcp_reset": lambda r: int(r.get("tcp.connection_rst", 0) == 1),
 
-        "ip_ttl": lambda row: int(row.get("ip.ttl") or 0),  
-        # Time-to-live utile pour repérer anomalies (bots, proxys, scanners)
+        # Connexion sans fermeture TCP propre (absence de FIN)
+        # Indice de scan ou de script interrompu
+        "tcp_no_fin": lambda r: int(r.get("tcp.connection_fin", 0) == 0),
 
-        "tcp_flags_syn": lambda row: int(row.get("tcp.flags_syn") or 0),  # Indicateur SYN
-        "tcp_flags_ack": lambda row: int(row.get("tcp.flags_ack") or 0),  # Indicateur ACK
-        "tcp_flags_fin": lambda row: int(row.get("tcp.flags_fin") or 0),  # Indicateur FIN
-        "tcp_flags_rst": lambda row: int(row.get("tcp.flags_reset") or 0),  # Indicateur RST (souvent attaques)
+        # Intervalle inter-paquet extrêmement faible
+        # Typique d’un comportement automatisé (bot)
+        "delta_time_low": lambda r: int(r.get("tcp.time_delta", 1) < 0.001),
 
-        "tcp_payload_len": lambda row: len(row.get("tcp.payload") or ""),  
-        # Taille des données TCP transportées
+        # RTT initial très bas
+        # Souvent observé dans des environnements automatisés ou locaux
+        "initial_rtt_suspect": lambda r: int(
+            0 < r.get("tcp.analysis_initial_rtt", 1) < 0.01
+        ),
 
-        "tcp_retransmissions": lambda row: 1 if row.get("tcp.analysis_retransmission") else 0,  
-        # Retransmission = congestion ou attaque
+        # Aucune commande SMTP valide détectée
+        # Correspond à des probes TCP ou des scans de service
+        "smtp_cmd_missing": lambda r: int(r.get("smtp.req_command") is None),
 
-        "tcp_out_of_order": lambda row: 1 if row.get("tcp.analysis_out_of_order") else 0,  
-        # Paquets reçus hors ordre (souvent scanners/attaques)
+        # Commandes SMTP rarement utilisées en usage légitime
+        # Souvent exploitées pour l’énumération (VRFY, EXPN)
+        "smtp_cmd_suspect": lambda r: int(
+            str(r.get("smtp.req_command")).upper() in {"VRFY", "EXPN", "TURN"}
+        ),
 
-        "tcp_dup_ack": lambda row: int(row.get("tcp.analysis_duplicate_ack") or 0),  
-        # ACK dupliqué = anomalie réseau ou brute-force
+        # Tentative d’authentification SMTP sans chiffrement
+        # Typique des bots de brute-force
+        "smtp_auth_no_tls": lambda r: int(
+            r.get("smtp.auth_username_password") is not None
+            and r["tcp.dstport"] == 25
+        ),
 
-        "tcp_window_size": lambda row: int(row.get("tcp.window_size_value") or 0),  
-        # Fenêtre TCP → utile pour détecter comportements anormaux
+        # Contenu SMTP DATA anormalement court
+        # Indique souvent un test, une erreur ou une reconnaissance
+        "smtp_data_too_short": lambda r: int(
+            0 < r.get("smtp.data_reassembled_length", 0) < 50
+        ),
 
-        "tcp_rtt": lambda row: float(row.get("tcp.analysis_ack_rtt") or 0.0),  
-        # Round-trip time (RTT) → détecte proxys, bots, VM, etc.
+        # Contenu SMTP DATA très volumineux
+        # Peut indiquer du spam massif ou une tentative de DoS applicatif
+        "smtp_data_too_long": lambda r: int(
+            r.get("smtp.data_reassembled_length", 0) > 500_000
+        ),
 
-        # -----------------------------
-        #              SMTP
-        # -----------------------------
+        # Absence de header FROM
+        # Non conforme RFC, fréquent dans les implémentations malveillantes
+        "missing_from": lambda r: int(r.get("imf.from") is None),
 
-        "smtp_command": lambda row: row.get("smtp.req_command"),  
-        # Commande SMTP brute (HELO, MAIL, RCPT…)
+        # Absence de sujet
+        # Fréquent dans les envois automatisés ou tests
+        "missing_subject": lambda r: int(r.get("imf.subject") is None),
 
-        "smtp_has_auth": lambda row: 1 if row.get("smtp.req_command") == "AUTH" else 0,  
-        # Indique une tentative d’authentification
-
-        "smtp_auth_username_password": lambda row: 1 if row.get("smtp.auth_username_password") else 0,  
-        # Auth SMTP utilisant username/password embarqué (souvent attaques)
-
-        "smtp_data_fragment_count": lambda row: int(row.get("smtp.data_fragment_count") or 0),  
-        # Nombre de fragments SMTP → gros emails / attaques
-
-        "smtp_eom": lambda row: 1 if row.get("smtp.eom") else 0,  
-        # Détection du tag de fin d’email
-
-        "smtp_command_count": lambda row: len(str(row.get("smtp.command_line") or "").split()),  
-        # Nombre de commandes dans la ligne SMTP (utile pour repérer spam bots)
-
-        "smtp_command_entropy": lambda row: ProtocolTransformer.entropy(row.get("smtp.command_line") or ""),  
-        # Entropie des commandes SMTP → anomalies/séquences automatiques
-
-        # -----------------------------
-        #       SMTP Payload
-        # -----------------------------
-
-        "smtp_payload_len": lambda row: len(row.get("smtp.payload") or ""),  
-        # Taille du contenu SMTP → souvent lié à spam/phishing
-
-        "smtp_payload_entropy": lambda row: ProtocolTransformer.entropy(row.get("smtp.payload") or ""),  
-        # Entropie du payload (détecte obfuscation, base64, scripts)
-
-        # -----------------------------
-        #        IMF / Email Data
-        # -----------------------------
-
-        "imf_subject_len": lambda row: len(row.get("imf.subject") or ""),  
-        # Longueur du sujet
-
-        "imf_subject_entropy": lambda row: ProtocolTransformer.entropy(row.get("imf.subject") or ""),  
-        # Entropie du sujet → détecte spam/phishing
-
-        "imf_from_domain": lambda row: (row.get("imf.from") or "").split("@")[-1] if "@" in (row.get("imf.from") or "") else "",  
-        # Domaine de l'expéditeur
-
-        "imf_to_count": lambda row: len(str(row.get("imf.to") or "").split(",")),  
-        # Nombre de destinataires → souvent élevé dans spam
-
-        "imf_has_multipart": lambda row: 1 if row.get("imf.mime_multipart_type") else 0,  
-        # Email avec multipart (pièces jointes, HTML…)
-
-        "imf_content_type": lambda row: row.get("imf.content_type_type"),  
-        # Content-Type (text/plain, text/html, multipart…)
-
-        "imf_message_text_len": lambda row: len(row.get("imf.message_text") or ""),  
-        # Longueur du corps du message
-
-        "imf_message_text_entropy": lambda row: ProtocolTransformer.entropy(row.get("imf.message_text") or "")  
-        # Entropie du texte → détecte obfuscation, encodages, scripts
+        # Message multipart (HTML / pièces jointes)
+        # Signal structurel utile sans analyser le contenu
+        "mime_multipart": lambda r: int(
+            r.get("imf.mime_multipart_type") is not None
+        )
     }
 

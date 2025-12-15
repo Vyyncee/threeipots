@@ -10,11 +10,10 @@ class RawTransformer(ProtocolTransformer):
     TRANSFORMATIONS = {
         # ===================== 1) Informations IP/TCP ===================== #
 
-        "src_ip": lambda row: row.get("ip.src"),  # Adresse IP source
-        "dst_ip": lambda row: row.get("ip.dst"),  # Adresse IP destination
-
-        "src_port": lambda row: row.get("tcp.srcport"),  # Port source TCP
-        "dst_port": lambda row: row.get("tcp.dstport"),  # Port destination TCP
+        "flow_id": lambda row: tuple(sorted([
+            (row["ip.src"], row["tcp.srcport"]),
+            (row["ip.dst"], row["tcp.dstport"])
+        ])),
 
         # Longueur du segment TCP (identifie bursts et trames suspectes).
         "tcp_len": lambda row: int(row.get("tcp.len", 0)),

@@ -32,11 +32,12 @@ class AbstractPortProcessor(ABC):
         return trame[self.columns.keys()]
 
     def predict(self, x):
+        trame = x
         x = self.transformer(x)
 
         # Prédiction
         pred = self.model.predict(x)
-        x['label'] = int(pred[0])
+        trame['label'] = int(pred[0])
 
         # Enregistrement
         path = os.path.join(
@@ -47,7 +48,7 @@ class AbstractPortProcessor(ABC):
         # Pour savoir si on doit ecrire le nom des colonnes dans le csv
         write_header = not os.path.exists(path) or os.path.getsize(path) == 0
 
-        x.to_csv(
+        trame.to_csv(
             path,
             mode='a',
             index=False,

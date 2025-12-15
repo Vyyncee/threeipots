@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from threeipots.utils.protocol import Protocol
 from threeipots.utils.transformer.transform import transform_row
 from sklearn.model_selection import GroupShuffleSplit
+import numpy as np
 
 class DataManager:
 
@@ -202,15 +203,6 @@ class DataManager:
         return balanced_df
 
     @staticmethod
-    def get_flow_id(row):
-        pair1 = (row['src_ip'], row['src_port'])
-        pair2 = (row['dst_ip'], row['dst_port'])
-        return tuple(sorted([pair1, pair2]))
-    
-    def add_flow_id(self, key):
-        self.merged[key]['flow_id'] = self.merged[key].apply(DataManager.get_flow_id, axis=1)
-
-    @staticmethod
     def mix_split(df):
         """
         df : DataFrame avec au moins les colonnes ['flow_id', 'label']
@@ -231,3 +223,20 @@ class DataManager:
         y_test = df[df['flow_id'].isin(test_flows['flow_id'])]['label']
 
         return X_train, X_test, y_train, y_test
+
+    def matrice_corr(self, key):
+        df = self.merged[key]
+        df_num = df.select_dtypes(include=[np.number])
+
+        plt.figure(figsize=(20, 18))
+        correlation_matrix = df_num.corr()
+        sns.heatmap(correlation_matrix, cmap='coolwarm', center=0, linewidths=0.5, cbar_kws={'shrink': 0.8})
+        plt.title('Matrice de Corrélation', fontsize=16)
+        plt.tight_layout()
+
+        threshold_corr = 0.98
+        upper = correlation_matrix.where(np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool))
+
+        to_drop = [column for column in upper.columns if any(upper[column].abs() > threshold_corr)]
+        self.merged[key] = self.merged[key].drop(columns=to_drop)
+        print("Colonnes supprimées :", to_drop)

@@ -48,7 +48,7 @@ Présentation :
     - TPOT (Pourquoi avoir choisie TPOT ?)
         - Les honey pots(Pourquoi avoir choisie ces honeypots ?)
         - 'tcpdump' integrer a TPOT
-- Extraction et converstion des données
+- Converstion des données
     - PCAP to CSV
     - Les données bénines
 POINT Données
@@ -59,7 +59,7 @@ POINT Données
     - Recherche des hyperparams
     - Entrainement
         - Passer chaque model (Peut etre un 1 pour chaque Protocole sinon trop long)
-    - Voting
+    - Stacking
     - Sauvegarde
 POINT Résultat
 - L'ids

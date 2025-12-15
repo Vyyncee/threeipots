@@ -5,6 +5,8 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report
 )
+from IPython.display import display
+import pandas as pd
 
 from joblib import dump
 
@@ -28,7 +30,7 @@ class ModelManager:
             "recall": recall_score(y, y_pred, zero_division=0),
             "f1_score": f1_score(y, y_pred, zero_division=0),
             "confusion_matrix": confusion_matrix(y, y_pred),
-            "classification_report": classification_report(y, y_pred, zero_division=0)
+            "classification_report": classification_report(y, y_pred, zero_division=0, digits=3, output_dict=True)
         }
 
         # Affichage simple
@@ -40,10 +42,14 @@ class ModelManager:
 
         # Affichage matrice de confusion
         print("=== Confusion Matrix ===")
-        print(metrics['confusion_matrix'], "\n")
+        plt.figure(figsize=(6,5))
+        sns.heatmap(metrics['confusion_matrix'], annot=True, fmt='d', cmap='Blues', cbar=False)
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
+        plt.show()
 
         # Affichage classification report
-        print("=== Classification Report ===")
-        print(metrics['classification_report'])
+        report_df = pd.DataFrame(metrics['classification_report']).transpose()
+        display(report_df.style.background_gradient(cmap='Blues', subset=['precision','recall','f1-score']))
 
         return metrics
