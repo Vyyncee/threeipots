@@ -1,0 +1,58 @@
+@startuml
+
+left to right direction
+
+package transformer{
+  ' Fonction libre
+  object "transform_row(row, protocol) : dict" as transform_row_obj
+}
+
+package ids.src{
+
+    class PortFactory {
+        - port_map: dict
+        + create_processor(trame)
+    }
+
+    abstract class AbstractPortProcessor{
+        + model : StackingClassifier
+        + columns : dict
+        + __init__(name) : void
+        + transformer(trame) : Dataframe
+        + {abstract} predict(x) : void
+    }
+
+    class HttpProcessor{
+        + NAME: Protocol {static}
+        + __init__() : void
+    }
+
+    class SshTelnetProcessor{
+        +  NAME: Protocol {static}
+        + __init__() : void
+    }
+
+    class SmtpProcessor{
+        +  NAME: Protocol {static}
+        + __init__() : void
+    }
+
+    class RawProcessor{
+        + NAME: Protocol {static}
+        + __init__() : void
+    }
+}
+
+package ids{
+    object MainIDS
+}
+
+HttpProcessor --|> AbstractPortProcessor
+SshTelnetProcessor --|> AbstractPortProcessor
+SmtpProcessor --|> AbstractPortProcessor
+RawProcessor --|> AbstractPortProcessor
+
+PortFactory o-- AbstractPortProcessor
+MainIDS --> PortFactory
+AbstractPortProcessor ..> transform_row_obj
+@enduml

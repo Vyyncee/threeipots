@@ -1,0 +1,73 @@
+@startuml
+left to right direction
+
+enum Protocol {
+  HTTP
+  SSH
+  TELNET
+  SMTP
+  RAW
+}
+
+package transformer {
+
+  ' Classe abstraite
+  abstract class ProtocolTransformer {
+    + NAME : Protocol {static}
+    + TRANSFORMATIONS : dict {static}
+    + entropy(s) : float {static}
+    + path_depth(path) : int {static}
+    + special_char_ratio(s) : float {static}
+    + apply(row) : dict
+  }
+
+  ' Registry global
+  object "TRANSFORMER_REGISTRY\n(dict)\n__init__.py" as R
+  note right of R
+    register_transformer(cls)
+    fonction décorateur
+  end note
+
+  ' Fonction libre
+  object "transform_row(row, protocol) : dict" as transform_row_obj
+}
+
+package "transformer.impl" {
+
+  class HttpTransformer {
+    + NAME : Protocol {static}
+    + TRANSFORMATIONS : dict {static}
+  }
+
+  class SshTelnetTransformer {
+    + NAME : Protocol {static}
+    + TRANSFORMATIONS : dict {static}
+  }
+
+  class SmtpTransformer {
+    + NAME : Protocol {static}
+    + TRANSFORMATIONS : dict {static}
+  }
+
+  class RawTransformer {
+    + NAME : Protocol {static}
+    + TRANSFORMATIONS : dict {static}
+  }
+
+  ' Héritage
+  HttpTransformer --|> ProtocolTransformer
+  SshTelnetTransformer --|> ProtocolTransformer
+  SmtpTransformer --|> ProtocolTransformer
+  RawTransformer --|> ProtocolTransformer
+
+  ' Décorateur
+  HttpTransformer ..> R : @register_transformer
+  SshTelnetTransformer ..> R : @register_transformer
+  SmtpTransformer ..> R : @register_transformer
+  RawTransformer ..> R : @register_transformer
+}
+
+' Dépendances
+transform_row_obj --> ProtocolTransformer
+ProtocolTransformer ..> Protocol : NAME
+@enduml
